@@ -1,0 +1,13 @@
+# MVP environment verified on macOS arm64 / Python 3.13.
+# Install this first, then: python -m pip install -e . --no-deps
+attrs==26.1.0
+charset-normalizer==3.5.1
+fonttools==4.64.0
+glyphsLib==6.14.0
+numpy==2.5.3
+opencv-python-headless==4.14.0.94
+openstep_plist==0.5.2
+pillow==12.3.0
+reportlab==4.5.1
+ufoLib2==0.18.1
+unicodedata2==17.0.1

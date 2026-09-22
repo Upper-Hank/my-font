@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "handfont"
+version = "0.1.0"
+description = "字记 / myfont — local handwriting to font"
+requires-python = ">=3.11"
+dependencies = [
+  "numpy>=2,<3",
+  "opencv-python-headless>=4.10,<5",
+  "Pillow>=11,<13",
+  "reportlab>=4,<5",
+  "fonttools>=4.55,<5",
+  "glyphsLib>=6.10,<7",
+]
+
+[project.scripts]
+handfont = "handfont.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+handfont = ["fonts/*", "static/**"]

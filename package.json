@@ -1,0 +1,7 @@
+{
+  "name": "myfont",
+  "private": true,
+  "scripts": {
+    "dev": ".venv/bin/handfont dev"
+  }
+}

@@ -1,0 +1,8 @@
+---
+description: UI 图标只能用 uplus-icon，禁止原生三角等替代图标
+alwaysApply: true
+---
+
+# 图标
+
+所有 UI 图标必须使用 `@uplus-icon/react`。禁止其他图标库、自绘 SVG、emoji、Unicode 符号，以及浏览器原生图标（`<details>` / `<summary>` 三角、`list-style` 当图标）。折叠用 `Disclosure`。操作按钮不要做成无边框 ghost；删除用 `danger`。

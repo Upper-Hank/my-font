@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="theme-color" content="#ffffff">
+    <title>字记</title>
+    <link rel="icon" href="/static/app/favicon.svg" type="image/svg+xml">
+    <link rel="icon" href="/static/app/favicon.ico" sizes="any">
+    <link rel="apple-touch-icon" href="/static/app/apple-touch-icon.png">
+    <script>
+      (function () {
+        var saved = localStorage.getItem('handfont-theme');
+        var theme = saved === 'light' || saved === 'dark' ? saved
+          : (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        document.documentElement.dataset.theme = theme;
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute('content', theme === 'dark' ? '#11110f' : '#ffffff');
+      })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@350;450;550&family=Noto+Sans+SC:wght@350;450;550&display=swap" rel="stylesheet">
+    <script type="module" crossorigin src="/static/app/assets/index-Dyqu0UiH.js"></script>
+    <link rel="stylesheet" crossorigin href="/static/app/assets/index-CD9CiZ-z.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
