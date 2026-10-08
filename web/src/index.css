@@ -1486,3 +1486,40 @@ body:has(.manage-toolbar) { padding-bottom: calc(var(--selection-bar-height, 120
   .character-detail .glyph-grid { grid-template-columns: minmax(0, 1fr); }
   .glyph-page-heading { flex-wrap: wrap; gap: 12px; }
 }
+
+/* Source material is the work surface; presets remain editable. */
+.source-region-layout { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 24px; align-items: start; }
+.source-image { position: relative; width: 100%; background: #fff; line-height: 0; }
+.source-image img { display: block; width: 100%; height: auto; user-select: none; }
+.source-image.is-drawing { cursor: crosshair; touch-action: none; }
+.source-region { position: absolute; min-width: 0; min-height: 0; padding: 0; border-radius: 2px; border: 1px solid #69695d; background: rgb(255 255 255 / 8%); color: #11110f; line-height: normal; overflow: visible; }
+.source-region span { position: absolute; left: 0; top: 0; background: #e9e6db; color: #11110f; font-size: 11px; padding: 1px 3px; pointer-events: none; }
+.source-region:hover, .source-region.selected { opacity: 1; background: rgb(180 180 160 / 18%); color: #11110f; border: 2px solid #11110f; }
+.is-drawing .source-region { pointer-events: none; opacity: 1; }
+.source-region-draft { border: 2px solid #11110f; pointer-events: none; }
+.source-region-controls { position: sticky; top: 24px; }
+.source-region-controls fieldset { border: 0; margin: 0 0 16px; padding: 0; min-width: 0; }
+.source-region-coordinates { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0; }
+.source-region-controls input { width: 100%; }
+.em-frame { position: relative; aspect-ratio: 1; border: 1px solid var(--ui-line); border-radius: 2px; }
+.em-frame img { position: relative; display: block; width: 100%; height: 100%; aspect-ratio: 1; object-fit: contain; }
+.em-guides { position: absolute; inset: 0; pointer-events: none; }
+.em-guides span { position: absolute; opacity: .55; }
+.em-center-x { top: 0; bottom: 0; left: 50%; border-left: 1px dashed var(--ui-line); }
+.em-center-y { left: 0; right: 0; top: 50%; border-top: 1px dashed var(--ui-line); }
+.em-baseline { left: 0; right: 0; top: 88%; border-top: 1px solid var(--ui-muted); }
+.hide-guides .em-guides { display: none; }
+.secondary, button.secondary, .button.secondary, .icon-button { background: var(--ui-surface); border-color: transparent; }
+.segmented button { background: var(--ui-surface); }
+.text-button { background: var(--ui-surface); padding: 0 12px; }
+.text-button:hover { background: var(--ui-hover); }
+.source-page { margin-bottom: 20px; }
+@media (max-width: 760px) {
+  .source-region-layout { grid-template-columns: 1fr; }
+  .source-region-controls { position: static; }
+}
+
+.conversion-focus { scroll-margin-top: 24px; margin: 20px 0; }
+.conversion-focus .glyph-editor-layout { grid-template-columns: minmax(0, 1.2fr) minmax(260px, 1fr); }
+.glyph-card.is-focused { box-shadow: inset 0 0 0 1px var(--ui-text); }
+@media (max-width: 760px) { .conversion-focus .glyph-editor-layout { grid-template-columns: 1fr; } }

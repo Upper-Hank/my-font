@@ -22,10 +22,10 @@ export function IconButton({ label, children, className = '', ...props }) {
   );
 }
 
-export function Disclosure({ className = '', summary, children }) {
-  const [open, setOpen] = useState(false);
+export function Disclosure({ className = '', summary, children, defaultOpen = false }) {
+  const [open, setOpen] = useState(defaultOpen);
   return (
-    <details className={`icon-disclosure ${className}`.trim()} onToggle={event => setOpen(event.currentTarget.open)}>
+    <details open={open} className={`icon-disclosure ${className}`.trim()} onToggle={event => setOpen(event.currentTarget.open)}>
       <summary>
         {open ? <ChevronDownIcon {...iconSm} /> : <ChevronRightIcon {...iconSm} />}
         {summary}

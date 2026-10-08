@@ -181,7 +181,7 @@ export default function Fonts() {
       <h1>{trash ? '字形回收站' : activeChar ? activeChar : '字符库'}</h1>
       <div className="actions">
         {(activeChar || trash) && detail.length > 0 && <div className="view-switch"><SelectMenu ariaLabel="查看方式" value={view} onChange={setView} options={[{ value: 'vector', label: '矢量' }, { value: 'gray', label: '原图' }, { value: 'binary', label: '黑白' }]} /></div>}
-        {!trash && <><Link className="button secondary with-icon" to={context.length ? templateUrl(context) : '/templates'}><FileIcon {...iconSm} />生成模板</Link><Link className="button secondary with-icon" to={photoUrl}><CameraIcon {...iconSm} />照片转字符</Link></>}
+        {!trash && <><Link className="button secondary with-icon" to={context.length ? templateUrl(context) : '/templates'}><FileIcon {...iconSm} />生成模板</Link><Link className="button secondary with-icon" to={photoUrl}><CameraIcon {...iconSm} />导入素材</Link></>}
         {library && <button type="button" className="with-icon" onClick={() => { setError(''); setAdding(true); }}><PlusIcon {...iconSm} />添加字符</button>}
         {!library && (trash || detail.length > 0) && batchToolbar}
       </div>
@@ -236,7 +236,7 @@ export default function Fonts() {
     </> : <section className="character-detail">
       {!trash && managing && selectedGlyphs.some(s => !s.usable) && <p className="hint">空白或触边字形不参与调整。</p>}
       {!detail.length
-        ? <div className="panel empty-character"><p className="muted">{trash ? '回收站为空。' : '还没有这个字的字形。打印模板或用照片转入。'}</p></div>
+        ? <div className="panel empty-character"><p className="muted">{trash ? '回收站为空。' : '还没有这个字的字形。导入照片取字，或打印模板书写后导入。'}</p></div>
         : <div className="glyph-grid">{(trash || !activeChar ? detail : ordered).map(glyphCard)}</div>}
     </section>}
     <Dialog open={adjusting} title={`统一调整 ${adjustable.length} 个字形`} busy={busy} onClose={() => setAdjusting(false)} className="batch-glyph-dialog">

@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react';
 const api = process.env.HANDFONT_API || 'http://127.0.0.1:8788';
 const proxyPaths = [
   '/history', '/library', '/api', '/files', '/download', '/bundle',
-  '/template', '/prepare', '/confirm', '/font', '/build',
+  '/template', '/prepare', '/confirm', '/preview', '/font', '/build',
 ];
 
 export default defineConfig(({ command }) => ({

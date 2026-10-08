@@ -28,8 +28,9 @@ from PIL import Image
 
 from .storage import data_dir, migrate_storage, file_path
 from .common import BUNDLED_LABEL_FONT, PRODUCT_EN, PRODUCT_ZH, OutputDirectory, digest, parse_cells, read_json, validate_manifest, write_json
-from .adjust import adjust_glyph, adjustment_options, preview_svg
+from .adjust import adjust_glyph, adjustment_options, preview_svg, character_placement
 from .build import build_run, compile_glyphs
+from .conversion import checked_regions, free_photo, process_regions, template_regions
 from .photo import PHOTO_SUFFIXES, open_photo, photo_to_scan
 from .project import (bootstrap_live, ensure_live, load_live, sample_library, select_sample, export_selection, archive_item, save_live, member_from, import_run, migrate_samples, cleanup_history, delete_samples, trash_samples, manage_characters, review_run, resolve_glyph, set_adjustment, font_pending, export_member_snapshot)
 from .scan import align_photo_cells, page_identity, process_scans
@@ -252,6 +253,9 @@ def make_server(root, host="127.0.0.1", port=8787):
                 if not photos or len(photos) > 8:
                     raise ValueError("请选择 1–8 张照片。")
                 selected = fields.get("template", "")
+                source_mode = fields.get("source", "auto")
+                if source_mode not in ("auto", "template", "free"):
+                    raise ValueError("素材类型无效。")
                 pages, matched_template, seen = [], None, set()
                 with OutputDirectory(data_dir(work, "staging") / run) as staging:
                     for index, (_, filename, data) in enumerate(photos, 1):
@@ -260,53 +264,85 @@ def make_server(root, host="127.0.0.1", port=8787):
                             raise ValueError("请上传 JPEG、PNG、WEBP、HEIC 或 TIFF。")
                         original = staging / f"{index:02d}-original{suffix}"
                         original.write_bytes(data)
+                        regions, manifest, warning = [], None, None
                         with open_photo(original) as photo:
-                            page, info = photo_to_scan(photo, dpi)
-                            qr = page_identity(page, dpi)
-                            template, manifest = match_template(work, qr, selected)
-                            if matched_template and template != matched_template:
-                                raise ValueError("一次请上传同一套模板的照片。")
-                            if manifest["page_id"] in seen:
-                                raise ValueError("同一模板页上传了两次，请只保留一张。")
-                            seen.add(manifest["page_id"])
-                            matched_template = template
-                            snapshot = staging / "template"
-                            snapshot.mkdir(exist_ok=True)
-                            write_json(snapshot / (manifest["page_id"] + ".json"), manifest)
-                            align_photo_cells(page, manifest, dpi)
+                            if source_mode != "free":
+                                try:
+                                    page, info = photo_to_scan(photo, dpi)
+                                    qr = page_identity(page, dpi)
+                                    template, manifest = match_template(work, qr, selected)
+                                except ValueError as reason:
+                                    if source_mode == "template" or selected:
+                                        raise
+                                    warning = f"未加载模板预设：{reason} 可直接在照片上框选取字。"
+                            if manifest is not None:
+                                if manifest["page_id"] in seen:
+                                    raise ValueError("同一模板页上传了两次，请只保留一张。")
+                                seen.add(manifest["page_id"])
+                                matched_template = template
+                                snapshot = staging / "template"
+                                snapshot.mkdir(exist_ok=True)
+                                write_json(snapshot / (manifest["page_id"] + ".json"), manifest)
+                                try:
+                                    offsets = align_photo_cells(page, manifest, dpi)
+                                except ValueError:
+                                    offsets = {}
+                                    info['warning'] = '部分格框未能精确定位，已加载模板位置，请检查并调整取字区域。'
+                                regions = template_regions(manifest, offsets, dpi)
+                                kind = manifest.get('mode', 'assigned')
+                            else:
+                                page, info, kind = free_photo(photo), {"warning": warning}, "free"
                             photo.thumbnail((900, 1200))
                             photo.convert("RGB").save(staging / f"{index:02d}-photo.jpg", quality=85)
                         Image.fromarray(page).save(staging / f"{index:02d}-scan.png")
                         pages.append({"photo": f"{index:02d}-photo.jpg", "scan": f"{index:02d}-scan.png",
                                       "original": original.name, "source_name": Path(filename).name,
-                                      "characters": len(manifest["cells"]), "page_id": manifest["page_id"], **info})
+                                      "characters": len(regions), "page_id": f"page-{index:02d}",
+                                      "source_kind": kind, "width": page.shape[1], "height": page.shape[0],
+                                      "regions": regions, "presets": regions, **info})
                     write_json(staging / "preview.json", {"run": run, "template": matched_template,
-                               "dpi": dpi, "pages": pages, "return_char": fields.get("return_char", ""), "threshold": fields.get("threshold", "").strip()})
+                               "schema": 2, "dpi": dpi, "pages": pages, "return_char": fields.get("return_char", ""), "threshold": fields.get("threshold", "").strip()})
                 return self.redirect(f"/preview/{run}")
-            if path == "/confirm":
+            if path == "/preview/save":
                 run = safe(fields.get("run", ""))
-                staging = data_dir(work, "staging") / run
-                preview = read_json(staging / "preview.json")
-                if fields.get("action") != "convert":
-                    return self.redirect("/photos")  # Never discard the user's original photos.
-                if (data_dir(work, "runs") / run / "run.json").is_file():
-                    with font_lock:
-                        import_run(work, run)
-                    return self.redirect(f"/run/{run}")
-                originals = [staging / p["original"] for p in preview["pages"] if p.get("original")]
-                if len(originals) != len(preview["pages"]):
-                    raise ValueError("这是旧版预览，没有保留原照片。请重新上传原照片。")
-                threshold = int(preview["threshold"]) if preview.get("threshold") else None
-                template_folder = staging / "template"
-                if not template_folder.is_dir():
-                    template_folder = data_dir(work, "templates") / preview["template"]
-                process_scans(template_folder, originals, data_dir(work, "runs") / run,
-                              preview["dpi"], threshold, photo_mode=True, review_pending=True)
                 with font_lock:
+                    record = data_dir(work, "staging") / run / "preview.json"
+                    preview = read_json(record)
+                    if preview.get('schema') != 2:
+                        raise ValueError('旧版预览请直接提取字形，或重新导入照片。')
+                    if (data_dir(work, "runs") / run / "run.json").is_file():
+                        raise ValueError('这次素材已经转换，请从素材入口重新导入。')
+                    preview['pages'] = checked_regions(preview['pages'], fields.get('pages'))
+                    temporary = record.with_suffix('.json.tmp')
+                    write_json(temporary, preview)
+                    temporary.replace(record)
+                return self.json(200, preview_payload(work, run))
+            if path == "/confirm":
+                with font_lock:
+                    run = safe(fields.get("run", ""))
+                    staging = data_dir(work, "staging") / run
+                    preview = read_json(staging / "preview.json")
+                    if fields.get("action") != "convert":
+                        return self.redirect("/photos")  # Never discard the user's original photos.
+                    if (data_dir(work, "runs") / run / "run.json").is_file():
+                        import_run(work, run)
+                        return self.redirect(f"/run/{run}")
+                    originals = [staging / p["original"] for p in preview["pages"] if p.get("original")]
+                    if len(originals) != len(preview["pages"]):
+                        raise ValueError("这是旧版预览，没有保留原照片。请重新上传原照片。")
+                    if preview.get('schema') == 2:
+                        process_regions(staging, preview, data_dir(work, "runs") / run)
+                    else:
+                        threshold = int(preview["threshold"]) if preview.get("threshold") else None
+                        template_folder = staging / "template"
+                        if not template_folder.is_dir():
+                            template_folder = data_dir(work, "templates") / preview["template"]
+                        process_scans(template_folder, originals, data_dir(work, "runs") / run,
+                                      preview["dpi"], threshold, photo_mode=True, review_pending=True)
                     from .matching import suggest_run
                     suggest_run(work, run)
                     import_run(work, run)
-                return self.redirect(f"/run/{run}")
+                    return self.redirect(f"/run/{run}")
             if path == "/history/cleanup":
                 with font_lock:
                     kind = fields.get("kind")
@@ -415,7 +451,7 @@ def make_server(root, host="127.0.0.1", port=8787):
                         raise ValueError('字形不存在。')
                     choices = {c['sample_id']: c for c in run.get('review_choices', [])}
                     choice = choices.get(sample_id, {})
-                    row = {**row, 'char': (query.get('char') or [choice.get('char', row['char'])])[0]}
+                    row = character_placement(row, (query.get('char') or [choice.get('char', row['char'])])[0])
                     row = adjust_glyph(row, json.loads(custom) if custom else choice.get('adjustment'))
                 else:
                     member = {'run': name, 'sample_id': sample_id, 'char': ''}
@@ -646,7 +682,8 @@ def preview_payload(work, name):
     for p in info["pages"]:
         pages.append({**p, "photo_url": f"/files/staging/{name}/{p['photo']}",
                       "scan_url": f"/files/staging/{name}/{p['scan']}"})
-    return {"id": name, "pages": pages, "template": info.get("template")}
+    return {"id": name, "schema": info.get("schema", 1), "pages": pages, "template": info.get("template"), "return_char": info.get("return_char", ""),
+            "converted": (data_dir(work, "runs") / name / "run.json").is_file()}
 
 
 def run_payload(work, name):
@@ -656,6 +693,7 @@ def run_payload(work, name):
         base = f"/files/runs/{name}/{g['sample_id']}"
         glyphs.append({"char": g["char"], "sample_id": g["sample_id"], "status": g["status"],
                        "matching_required": g.get("matching_required", False), "candidates": g.get("candidates", []),
+                       "source_kind": g.get("source_kind"), "source_name": g.get("source_name"),
                        "cell_id": g["cell_id"], "usable": g["status"] == "review", "has_vector": bool(g.get("commands")),
                        "gray": f"{base}/gray.png", "binary": f"{base}/binary.png",
                        "vector": f"{base}/outline.svg"})

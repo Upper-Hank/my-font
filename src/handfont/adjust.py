@@ -9,7 +9,7 @@ from fontTools.pens.recordingPen import RecordingPen, replayRecording
 from fontTools.pens.transformPen import TransformPen
 from fontTools.pens.svgPathPen import SVGPathPen
 from .common import TOP, UPM
-from .trace import bounds
+from .trace import bounds, shift
 
 DEFAULT_ADJUSTMENT = {'normalize': False, 'center_x': False, 'center_y': False,
                       'target': 800, 'scale': 1.0, 'reference': False, 'offset_x': 0, 'offset_y': 0}
@@ -81,8 +81,26 @@ def adjust_glyph(row, options=None):
     return result
 
 
+def character_placement(row, char):
+    """Recompute spacing from the final identity, including changed template labels."""
+    result = {**row, 'char': char, 'width': UPM}
+    previous = row.get('spacing_shift', 0)
+    result['commands'] = shift(row['commands'], -previous) if previous else row['commands']
+    dx = 0
+    box = bounds(result['commands']) if len(char) == 1 and ord(char) < 128 else None
+    if box:
+        dx = 60 - box[0]
+        result['commands'] = shift(result['commands'], dx)
+        result['width'] = round(box[2] - box[0] + 120)
+    result['spacing_shift'] = dx
+    if 'image_transform' in row:
+        result['image_transform'] = list(row['image_transform'])
+        result['image_transform'][4] += dx - previous
+    return result
+
+
 def preview_svg(row):
     pen = SVGPathPen(None)
     replayRecording(row['commands'], TransformPen(pen, (1, 0, 0, -1, 0, 0)))
-    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 {-TOP} {row["width"]} {UPM}">'
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 {-TOP} {UPM} {UPM}">'
             f'<path fill="black" d="{pen.getCommands()}"/></svg>')

@@ -2,12 +2,10 @@ import ManagedRecords from '../components/ManagedRecords.jsx';
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { getJson, postForm } from '../api.js';
-import ChevronDownIcon from '@uplus-icon/react/icons/chevron-down';
-import ChevronRightIcon from '@uplus-icon/react/icons/chevron-right';
 import CloseIcon from '@uplus-icon/react/icons/close';
 import PlusIcon from '@uplus-icon/react/icons/plus';
 import ScanIcon from '@uplus-icon/react/icons/scan';
-import { ErrorNote, IconButton, Page, iconProps, iconSm } from '../ui.jsx';
+import { ErrorNote, IconButton, Page, Disclosure, iconProps, iconSm } from '../ui.jsx';
 import SelectMenu from '../SelectMenu.jsx';
 
 export default function Photos() {
@@ -18,7 +16,7 @@ export default function Photos() {
   const [template, setTemplate] = useState(params.get('template') || '');
   const [dpi, setDpi] = useState('300');
   const [threshold, setThreshold] = useState('');
-  const [optionsOpen, setOptionsOpen] = useState(false);
+  const [source, setSource] = useState(params.get('template') ? 'template' : 'auto');
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -43,7 +41,8 @@ export default function Photos() {
     setError('');
     const form = new FormData();
     files.forEach((file) => form.append('photos', file));
-    form.append('template', template);
+    form.append('source', source);
+    form.append('template', source === 'free' ? '' : template);
     form.append('return_char', params.get('char') || '');
     form.append('dpi', dpi);
     form.append('threshold', threshold);
@@ -62,8 +61,8 @@ export default function Photos() {
   return (
     <Page>
       <section className="panel">
-        <h2>照片转字符</h2><p className="hint">上传书写照片，提取后先整理结果，再加入字符库。</p>
-        {params.get('chars') && <p className="hint">本次补充：{params.get('chars')}。字形对应的字符以模板为准，可在整理时修正。</p>}
+        <h2>导入素材</h2><p className="hint">普通照片、扫描稿或模板照片，都可以提取字形，调整后收入同一份字体。</p>
+        {params.get('chars') && <p className="hint">本次补充：{params.get('chars')}。模板字符会预先填入，也可以重新指定。</p>}
         <form className="photo-upload" onSubmit={submit}>
             <div className="photo-upload-stage">
               <label className={`drop-zone${dragging ? ' dragging' : ''}`}
@@ -83,25 +82,28 @@ export default function Photos() {
               ) : null}
             </div>
             <div className="photo-upload-options">
-              <label htmlFor="template-select">对应模板</label>
+              <label htmlFor="source-select">素材类型</label>
+              <SelectMenu id="source-select" ariaLabel="素材类型" value={source} onChange={value => { setSource(value); if (value !== 'template') setTemplate(''); }} options={[
+                { value: 'auto', label: '自动判断，加载可识别的模板预设' },
+                { value: 'free', label: '普通照片 / 扫描稿，直接取字' },
+                { value: 'template', label: '项目模板，加载格子与字符预设' },
+              ]} />
+              {source === 'template' && <><label htmlFor="template-select">模板预设</label>
               <SelectMenu
                 id="template-select"
                 ariaLabel="对应模板"
                 value={template}
                 onChange={setTemplate}
                 options={[
-                  { value: '', label: '自动识别照片上的模板' },
+                  { value: '', label: '自动识别模板' },
                   ...data.templates.map((item) => ({
                     value: item.id,
                     label: item.system || item.mode === 'generic' ? `${item.title}（自由书写）` : item.title,
                   })),
                 ]}
               />
-              <details className="process-options icon-disclosure" onToggle={(event) => setOptionsOpen(event.currentTarget.open)}>
-                <summary>
-                  {optionsOpen ? <ChevronDownIcon {...iconSm} /> : <ChevronRightIcon {...iconSm} />}
-                  处理选项
-                </summary>
+              </>}
+              <Disclosure className="process-options" summary="提取选项">
                 <label htmlFor="dpi-select">校正精度</label>
                 <SelectMenu
                   id="dpi-select"
@@ -114,22 +116,22 @@ export default function Photos() {
                   ]}
                 />
                 <label>墨迹阈值
-                  <input type="number" min="1" max="254" placeholder="自动；工程调试时才填写" value={threshold} onChange={(e) => setThreshold(e.target.value)} />
+                  <input type="number" min="1" max="254" placeholder="自动" value={threshold} onChange={(e) => setThreshold(e.target.value)} />
                 </label>
-              </details>
+              </Disclosure>
               <ErrorNote error={error} />
-              <button className="full with-icon" type="submit" disabled={busy || !files.length}><ScanIcon {...iconSm} />{busy ? '正在校正…' : '校正并预览'}</button>
+              <button className="full with-icon" type="submit" disabled={busy || !files.length}><ScanIcon {...iconSm} />{busy ? '正在准备素材…' : '进入取字'}</button>
             </div>
         </form>
       </section>
-      <ManagedRecords title="整理空间" hint="照片预览和待整理结果会保留，可以随时继续。"
-        items={[...(data.pending || []).map(item => ({ ...item, kind: 'run', title: '继续整理字形', to: `/run/${item.id}` })), ...data.previews.map(item => ({ ...item, kind: 'preview', title: '照片预览', to: `/preview/${item.id}` }))]}
+      <ManagedRecords title="继续转化" hint="取字区域和字形调整都可以保存，稍后继续。"
+        items={[...(data.pending || []).map(item => ({ ...item, kind: 'run', title: '继续整理字形', to: `/run/${item.id}` })), ...data.previews.map(item => ({ ...item, kind: 'preview', title: '继续取字', to: `/preview/${item.id}` }))]}
         onRefresh={async () => setData(await getJson('/api/photos'))} />
       {(data.runs.length > 0 || data.archived_runs?.length > 0) && <ManagedRecords title="已完成转换" hint="删除转换记录不会删除已经加入的字形。"
         items={[...data.runs, ...(data.archived_runs || [])].map(item => ({ ...item, kind: 'run', title: '查看转换结果', to: `/run/${item.id}` }))}
         onRefresh={async () => setData(await getJson('/api/photos'))} />}
       {data.archived_previews?.length > 0 && <ManagedRecords title="任务回收站" recoverable
-        items={data.archived_previews.map(item => ({ ...item, kind: 'preview', title: '照片预览' }))}
+        items={data.archived_previews.map(item => ({ ...item, kind: 'preview', title: '继续取字' }))}
         onRefresh={async () => setData(await getJson('/api/photos'))} />}
     </Page>
   );

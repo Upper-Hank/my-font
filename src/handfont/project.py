@@ -8,7 +8,7 @@ import threading
 from pathlib import Path
 
 from .storage import data_dir
-from .adjust import adjust_glyph, adjustment_options
+from .adjust import adjust_glyph, adjustment_options, character_placement
 from .common import PRODUCT_EN, PRODUCT_ZH, OutputDirectory, read_json, write_json, digest, parse_cells, parse_one_cell, glyph_name
 from .template import SYSTEM_PAPER_ID
 
@@ -162,6 +162,7 @@ def sample_library(work):
                 "status": glyph["status"],
                 "usable": glyph["status"] == "review" and bool(glyph.get("commands")),
                 "gray": base + "/gray.png", "binary": base + "/binary.png",
+                "source_kind": glyph.get("source_kind"), "source_name": glyph.get("source_name"),
                 "adjustment": adjustment_options(overrides.get(f"{folder.name}/{glyph['sample_id']}", glyph.get('adjustment'))),
                 "vector": "/api/glyph-preview?sample=" + f"{folder.name}/{glyph['sample_id']}" + "&v=" + digest(overrides.get(f"{folder.name}/{glyph['sample_id']}", glyph.get("adjustment")))})
     project = load_live(work)
@@ -424,18 +425,8 @@ def reviewed_glyphs(run):
              'glyph_name': glyph_name(by_id[g['sample_id']]['char']),
              'adjustment': adjustment_options(by_id[g['sample_id']].get('adjustment'))}
             for g in run['glyphs'] if g['sample_id'] in by_id]
-    # Generic crops have no Latin spacing until their character is confirmed.
-    from .trace import bounds, shift
+    rows = [character_placement(row, row['char']) for row in rows]
     for row in rows:
-        if row.get('matching_required') and row.get('commands') and ord(row['char']) < 128:
-            box = bounds(row['commands'])
-            if box:
-                dx = 60 - box[0]
-                row['commands'] = shift(row['commands'], dx)
-                row['width'] = round(box[2] - box[0] + 120)
-                row['spacing_shift'] = dx
-                row['image_transform'] = list(row['image_transform'])
-                row['image_transform'][4] += dx
         row['matching_required'] = False
     return rows
 

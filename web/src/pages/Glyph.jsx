@@ -1,3 +1,4 @@
+import GlyphFrame from '../components/GlyphFrame.jsx';
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import CheckIcon from '@uplus-icon/react/icons/check';
@@ -62,6 +63,7 @@ export default function Glyph() {
         <button type="button" className={chosen ? 'glyph-default-toggle is-on' : undefined} aria-pressed={chosen} disabled={busy || !sample.usable} onClick={() => mutate('/font/select', { sample: id, remove: chosen }, chosen ? '已移到候选字形。' : '已设为正式字形。')}>{chosen ? '移到候选' : '用作正式字形'}</button>
         <button type="button" className="danger with-icon" disabled={busy} onClick={() => setDeleting(true)}><TrashIcon {...iconSm} />删除</button>
       </div></div>
+      {sample.source_name && <p className="hint">来源：{sample.source_name}</p>}
       <div className="glyph-editor-layout">
         <section className="panel">
           <div className="glyph-editor-heading">
@@ -72,25 +74,24 @@ export default function Glyph() {
               ))}
             </div>
           </div>
-          <div className="glyph-frame glyph-editor-preview" aria-label="字形预览">
-            <img
-              className={preview === 'vector' && sample.usable ? 'is-vector' : undefined}
+          <GlyphFrame className={preview === 'vector' ? "glyph-editor-preview" : "glyph-editor-preview hide-guides"}
+              imageClassName={preview === 'vector' && sample.usable ? 'is-vector' : undefined}
               src={preview === 'photo' ? sample.gray : preview === 'binary' ? sample.binary || sample.gray : sample.usable ? adjustmentPreview(id, previewOptions) : sample.gray}
               onError={() => setPreviewFailed(true)}
               onLoad={() => setPreviewFailed(false)}
               alt={preview === 'photo' ? `${sample.char}原始照片` : preview === 'binary' ? `${sample.char}黑白图` : `${sample.char}字形预览`}
             />
-          </div>
           {previewFailed && <p className="form-error" role="alert">预览加载失败，请重试或切换原图。</p>}
         </section>
         <section className="panel">
           <div className="glyph-editor-heading">
-            <h2>大小与位置</h2>
+            <h2>字面大小与位置</h2>
             <div className="actions adjustment-commit">
               <button type="button" className="secondary" disabled={busy || !sample.usable} onClick={() => setOptions({ ...ORIGINAL })}>恢复原始</button>
               <button className="with-icon" disabled={busy || !sample.usable} onClick={() => mutate('/font/adjust', { ids: [id], adjustment: options }, '修正已保存，请更新字体。')}><CheckIcon {...iconSm} />保存修正</button>
             </div>
           </div>
+          <p className="hint">外框为 1000 字面单位，虚线为中心，底部实线为基线。等比调整完整字形；标点和英文不自动撑满字面。</p>
           <AdjustmentFields value={options} onChange={setOptions} disabled={busy || !sample.usable} />
           {!sample.usable && <p className="hint">空白或触边，无法调整或设为正式字形。</p>}
         </section>

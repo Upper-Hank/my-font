@@ -30,12 +30,12 @@ export function AdjustmentFields({ value, onChange, disabled }) {
   const fit = fitMode(value);
   return <fieldset className="adjustment-fields" disabled={disabled}>
     <div className="segmented adjustment-fit" role="group" aria-label="字面大小">
-      {[['original', '保留原稿'], ['reference', '适配字面'], ['normalize', '最长边']].map(([key, label]) => (
+      {[['original', '保留原稿'], ['reference', '适配字面'], ['normalize', '指定占框比例']].map(([key, label]) => (
         <button type="button" key={key} className={fit === key ? 'selected' : ''} aria-pressed={fit === key} onClick={() => change({ reference: key === 'reference', normalize: key === 'normalize' })}>{label}</button>
       ))}
     </div>
-    {value.normalize && <AdjustmentSlider label="目标占字框" display={`${Math.round(value.target / 10)}%`} min="400" max="950" step="10" value={value.target} onChange={e => change({ target: Number(e.target.value) })} />}
-    <AdjustmentSlider label="整体缩放" display={`${Math.round(value.scale * 100)}%`} min="0.25" max="4" step="0.05" value={value.scale} onChange={e => change({ scale: Number(e.target.value) })} />
+    {value.normalize && <AdjustmentSlider label="汉字最长边占字面" display={`${Math.round(value.target / 10)}%`} min="400" max="950" step="10" value={value.target} onChange={e => change({ target: Number(e.target.value) })} />}
+    <AdjustmentSlider label="等比缩放" display={`${Math.round(value.scale * 100)}%`} min="0.25" max="4" step="0.05" value={value.scale} onChange={e => change({ scale: Number(e.target.value) })} />
     <div className="adjustment-toggles">
       <label className="review-choice"><input type="checkbox" checked={value.center_x} onChange={e => change({ center_x: e.target.checked })} />水平居中</label>
       <label className="review-choice"><input type="checkbox" checked={value.center_y} onChange={e => change({ center_y: e.target.checked })} />垂直居中</label>
